@@ -1,0 +1,96 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usepackage{amssymb}
+
+\title{PureScript Test Task}
+\author{
+    Jonn Mostovoy\\
+    \texttt{jonn.mostovoy@iohk.io}
+}
+
+\date{November 2016}
+
+\begin{document}
+
+\maketitle
+
+\section{Setting}
+
+In this test task we will be working with types that capture the concept time tracking
+and reporting on time spent on issues.
+Turns out that time tracking can be captured with types that inhabit the following 
+multiparameter typeclasses:
+
+\begin{verbatim}
+class Track e t b a where
+    extract
+        :: (Foldable b, Monoid (t (b a)), Traversable t)
+        => e -> t (b a) -> t (b a)
+
+class Report r t d  where
+    produce
+        :: (Monoid (t d), Traversable t)
+        => (t d -> r)
+\end{verbatim}
+First typeclass captures the idea of tracking events of type $ e $, putting those into a universe of activity
+categories $ t $ with payload data $ a $ embedded into a foldable structure $ b $ and merging it with $ mappend $ with
+the previously tracked events.
+For example, if we receive a feed of events from a VoIP meeting software about which participant starts
+speaking at a particular time — $ (Text, POSIXTime) $, and we want to record time periods for each meeting
+separately into a structure \\$ [ (Text, NominalDiffTime) ] $, we could define an instance of this typeclass
+and provide implementation for $ extract $ that works for this use case:
+\begin{verbatim}
+instance Track [(Text, POSIXTime)] [] [] (Text, NominalDiffTime)
+  where
+    extract xs ds = ...
+\end{verbatim}
+An example of using such construction would be the following:
+\begin{verbatim}
+> let x = [("Jonn",1479081309s),("Charles",1479081429s),
+          ("Arseniy",1479081666s),("Jonn",1479082000s),
+          ("George",1479083307s),("Meeting Ended",1479085307s)]
+> extract x ([] :: [[(Text, NominalDiffTime)]])
+[[("George",2000s),("Jonn",1307s),("Arseniy",334s),
+  ("Charles",237s),("Jonn",120s)]]
+\end{verbatim}
+Second typeclass captures the idea of producing reports out of the tracked events. For instance, if we
+want to produce report on who have spoken how much during the meetings, we can model the report with
+type \\$ Map $ $ Text $ $ NominalDiffTime $ and implement report generation by defining the
+following instance:
+\begin{verbatim}
+type Tau = NominalDiffTime
+instance Report (Map Text Tau) [] (Text, Tau) where
+    produce xs = fromListWith (+) xs
+\end{verbatim}
+Let's see how to use $ produce $, continuing our example:
+\begin{verbatim}
+> let y = extract x ([] :: [[(Text, NominalDiffTime)]])
+> (produce . (concatMap id)) y
+fromList [("Arseniy",334s),("Charles",237s),("George",2000s),
+          ("Jonn",1427s)]
+\end{verbatim}
+
+\section{Basic Task}
+
+Using `aeson`, `servant`, `argonaut`, and `purescript-bridge` implement a program that
+displays values of concrete tracking and reporting types in browser.
+\\
+Concrete tracking type is $ [[(Text, NominalDiffTime)]] $.
+\\
+Concrete reporting type is $ Map $ $ Text $ $ NominalDiffTime $.
+\\
+How your approach would have been different if you would have had to work with a sum type? A record?
+
+\section{Advanced Task}
+
+Using the same set of libraries, bridge as many members of the typeclasses
+defined in the first section as possible from Haskell types to PureScript types
+and provide a way to display values of those types in browser.
+
+\section{Relevant Code}
+Relevant code  can be found here —\\
+\texttt{https://github.com/input-output-hk/purescript-test-task} in the \\\texttt{src/Sample.hs} file.
+NB! Don't fork this repository while working on your submission.
+
+\end{document}
