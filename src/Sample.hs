@@ -17,15 +17,13 @@ import           Data.Text             (Text ())
 import           Data.Time.Clock       (NominalDiffTime ())
 import           Data.Time.Clock.POSIX (POSIXTime ())
 
-class Track e t b a where
-    extract
-        :: (Foldable b, Monoid (t (b a)), Traversable t)
-        => e -> t (b a) -> t (b a)
+class (Foldable b, Monoid (t (b a))) =>
+      Track e t b a  where
+    extract :: e -> t (b a) -> t (b a)
 
-class Report r t d  where
-    produce
-        :: (Monoid (t d), Traversable t)
-        => (t d -> r)
+class (Monoid (t d), Traversable t) =>
+      Report r t d  where
+    produce :: (t d -> r)
 
 type TrInput = (Text, POSIXTime)
 type TrOutput = (Text, NominalDiffTime)
